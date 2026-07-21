@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 # Page Configuration
 st.set_page_config(
@@ -44,3 +45,19 @@ uploaded_file = st.file_uploader(
 )
 
 analyze = st.button("Analyze Influencers")
+
+
+
+if uploaded_file is not None:
+
+    try:
+        df = pd.read_csv(uploaded_file)
+
+        st.success("File uploaded successfully!")
+
+        st.subheader("Uploaded Data")
+
+        st.dataframe(df, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
