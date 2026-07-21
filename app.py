@@ -53,11 +53,32 @@ if uploaded_file is not None:
     try:
         df = pd.read_csv(uploaded_file)
 
-        st.success("File uploaded successfully!")
+        required_columns = [
+            "Name",
+            "Handle",
+            "Platform",
+            "Bio",
+            "Followers",
+            "Language"
+        ]
 
-        st.subheader("Uploaded Data")
+        missing_columns = []
 
-        st.dataframe(df, use_container_width=True)
+        for column in required_columns:
+            if column not in df.columns:
+                missing_columns.append(column)
+
+        if missing_columns:
+            st.error("Invalid CSV File")
+            st.write("Missing Columns:")
+            st.write(missing_columns)
+
+        else:
+            st.success("Valid CSV File")
+
+            st.subheader("Uploaded Data")
+
+            st.dataframe(df, use_container_width=True)
 
     except Exception as e:
-        st.error(f"Error reading file: {e}")
+        st.error(f"Error : {e}")
