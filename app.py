@@ -76,6 +76,39 @@ def render_filters(df):
     st.dataframe(filtered_df, use_container_width=True)
 
 
+def render_cards(df, page: int, page_size: int):
+    """Render a paginated card view for the dataframe."""
+    start = page * page_size
+    end = start + page_size
+    page_df = df.reset_index(drop=True).iloc[start:end]
+
+    if page_df.empty:
+        st.info("No results on this page.")
+        return
+
+    # Display cards in rows of three
+    cols_per_row = 3
+    for i in range(0, len(page_df), cols_per_row):
+        row_slice = page_df.iloc[i : i + cols_per_row]
+        cols = st.columns(len(row_slice))
+        for col, (_, r) in zip(cols, row_slice.iterrows()):
+            with col:
+                st.markdown(f"**{r.get('Name','')}**")
+                handle = r.get('Handle', '')
+                platform = r.get('Platform', '')
+                if handle:
+                    st.write(f"@{handle}")
+                st.write(f"**Platform:** {platform}")
+                st.write(f"**Followers:** {r.get('Followers', '')}")
+                st.write(f"**Match Score:** {r.get('Match Score', '')} — {r.get('Status','')}")
+                keywords = r.get('Matched Keywords', '')
+                if keywords:
+                    st.write(f"**Matched:** {keywords}")
+                bio = r.get('Bio', '')
+                if bio:
+                    st.caption(bio[:200])
+
+
 def main():
     st.set_page_config(page_title="Influencer Discovery Dashboard", page_icon="📊", layout="wide")
     st.title("📊 Influencer Discovery Dashboard")
@@ -181,7 +214,31 @@ def main():
 
     if st.session_state.result_df is not None:
         st.subheader("Analyzed Data")
-        st.dataframe(st.session_state.result_df, use_container_width=True)
+
+        # View mode: table or cards
+        view_mode = st.radio("View As", ["Table", "Cards"], horizontal=True)
+        # Pagination controls
+        total = len(st.session_state.result_df)
+        page_size = st.selectbox("Results per page", [3, 6, 9, 12, 24], index=1)
+        total_pages = max(1, (total + page_size - 1) // page_size)
+        if "page" not in st.session_state:
+            st.session_state.page = 0
+
+        cols = st.columns([1, 2, 1])
+        with cols[0]:
+            if st.button("Prev"):
+                st.session_state.page = max(0, st.session_state.page - 1)
+        with cols[2]:
+            if st.button("Next"):
+                st.session_state.page = min(total_pages - 1, st.session_state.page + 1)
+
+        st.write(f"Page {st.session_state.page + 1} of {total_pages} — {total} results")
+
+        if view_mode == "Table":
+            st.dataframe(st.session_state.result_df, use_container_width=True)
+        else:
+            render_cards(st.session_state.result_df, st.session_state.page, page_size)
+
         render_filters(st.session_state.result_df)
 
 
