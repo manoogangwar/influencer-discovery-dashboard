@@ -85,4 +85,3 @@ The app will display the uploaded data, analyzed results with `Match Score`, `Ma
 - `utils.py` — helpers for normalization and follower parsing
 - `data.csv` — small sample dataset demonstrating criteria matches
 
-If you want, I can extend `classifier.py` to use an LLM API (OpenAI, local LLM) for semantic matching — tell me which provider and API key approach you'd prefer.

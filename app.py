@@ -23,7 +23,7 @@ def load_dataset(uploaded_file):
 
 
 def analyze_dataframe(df, language, orientation, niche):
-    # default: not using LLM
+    # default: without using LLM
     result_df = df.copy()
     scores = []
     matched_keywords = []
