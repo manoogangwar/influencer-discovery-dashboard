@@ -7,15 +7,22 @@ from validator import validate_dataframe
 
 
 def load_dataset(uploaded_file):
+    # Support CSV and Excel uploads
+    name = getattr(uploaded_file, "name", "") or ""
+    name = name.lower()
     try:
-        dataset = pd.read_csv(uploaded_file)
+        if name.endswith(('.xls', '.xlsx')):
+            dataset = pd.read_excel(uploaded_file)
+        else:
+            dataset = pd.read_csv(uploaded_file)
     except Exception as exc:
-        raise ValueError("Unable to read the uploaded CSV file. Please upload a valid CSV.") from exc
+        raise ValueError("Unable to read the uploaded file. Please upload a valid CSV or Excel file.") from exc
 
     return dataset
 
 
 def analyze_dataframe(df, language, orientation, niche):
+    # default: not using LLM
     result_df = df.copy()
     scores = []
     matched_keywords = []
@@ -82,7 +89,12 @@ def main():
         language = st.selectbox("Language", ["Hindi", "English", "Hindi & English"])
         orientation = st.selectbox("Orientation", ["Pro Government", "Neutral", "Any"])
         niche = st.text_input("Content Niche", placeholder="Example: Government Schemes, Digital India")
-        uploaded_file = st.file_uploader("Upload your influencer CSV", type=["csv"])
+        use_llm = st.checkbox("Use LLM semantic matching (OpenAI)")
+        api_key = None
+        if use_llm:
+            api_key = st.text_input("OpenAI API Key (optional)", type="password")
+
+        uploaded_file = st.file_uploader("Upload your influencer CSV or Excel", type=["csv", "xls", "xlsx"])
         analyze = st.button("Analyze Influencers")
 
     if uploaded_file is None:
@@ -106,7 +118,34 @@ def main():
     st.dataframe(df, use_container_width=True)
 
     if analyze:
-        result_df = analyze_dataframe(df, language, orientation, niche)
+        # If LLM selected, use LLM wrapper
+        if use_llm and api_key:
+            # call classifier's LLM wrapper during analysis
+            result_df = df.copy()
+            scores = []
+            matched_keywords = []
+            statuses = []
+            from classifier import classify_influencer_llm
+
+            for _, row in result_df.iterrows():
+                score, keywords, status = classify_influencer_llm(
+                    bio=row.get("Bio", ""),
+                    influencer_language=row.get("Language", ""),
+                    selected_language=language,
+                    selected_orientation=orientation,
+                    selected_niche=niche,
+                    api_key=api_key,
+                )
+                scores.append(score)
+                matched_keywords.append(", ".join(keywords))
+                statuses.append(status)
+
+            result_df["Match Score"] = scores
+            result_df["Matched Keywords"] = matched_keywords
+            result_df["Status"] = statuses
+            result_df["Followers"] = result_df["Followers"].apply(convert_to_int)
+        else:
+            result_df = analyze_dataframe(df, language, orientation, niche)
         st.session_state.result_df = result_df
 
     if st.session_state.result_df is not None:
