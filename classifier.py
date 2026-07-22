@@ -1,3 +1,5 @@
+import re
+
 ORIENTATION_KEYWORDS = [
     "government",
     "government schemes",
@@ -8,8 +10,14 @@ ORIENTATION_KEYWORDS = [
     "skill india",
     "viksit bharat",
     "national development",
-    "atmanirbhar bharat"
+    "atmanirbhar bharat",
 ]
+
+
+def normalize_text(value):
+    text = str(value or "").strip().lower()
+    text = re.sub(r"\s+", " ", text)
+    return text
 
 
 def classify_influencer(
@@ -17,66 +25,57 @@ def classify_influencer(
     influencer_language,
     selected_language,
     selected_orientation,
-    selected_niche
+    selected_niche,
 ):
-
-    bio = str(bio).lower()
+    bio_text = normalize_text(bio)
+    selected_language = normalize_text(selected_language)
+    selected_orientation = normalize_text(selected_orientation)
+    selected_niche = normalize_text(selected_niche)
+    influencer_language = normalize_text(influencer_language)
 
     score = 0
-    matched = []
+    matched_keywords = []
 
     # ---------- Niche Match (40) ----------
-    if selected_niche.strip():
+    if selected_niche:
+        niche_terms = [term.strip() for term in re.split(r"[,-]", selected_niche) if term.strip()]
+        niche_terms = [term for term in niche_terms if term]
 
-        words = selected_niche.lower().split()
+        if niche_terms:
+            match_count = 0
+            for term in niche_terms:
+                if term in bio_text:
+                    matched_keywords.append(term)
+                    match_count += 1
 
-        count = 0
-
-        for word in words:
-
-            if word in bio:
-                matched.append(word)
-                count += 1
-
-        if len(words) > 0:
-            score += int((count / len(words)) * 40)
+            score += int((match_count / len(niche_terms)) * 40)
 
     # ---------- Language Match (30) ----------
-
-    if selected_language == "Hindi & English":
+    if selected_language == "hindi & english":
         score += 30
-
-    elif influencer_language.lower() == selected_language.lower():
+    elif influencer_language == selected_language and selected_language in {"hindi", "english"}:
         score += 30
 
     # ---------- Orientation Match (30) ----------
-
-    if selected_orientation == "Any":
-
+    if selected_orientation == "any":
         score += 30
-
     else:
-
         for keyword in ORIENTATION_KEYWORDS:
-
-            if keyword in bio:
-
+            if keyword in bio_text:
+                matched_keywords.append(keyword)
                 score += 30
-                matched.append(keyword)
                 break
 
-    # ---------- Status ----------
+    score = max(0, min(score, 100))
 
     if score >= 80:
         status = "Excellent"
-
     elif score >= 60:
         status = "Good"
-
     elif score >= 40:
         status = "Average"
-
     else:
         status = "Poor"
 
-    return score, matched, status
+    matched_keywords = list(dict.fromkeys(matched_keywords))
+    return score, matched_keywords, status
