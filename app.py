@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from classifier import classify_influencer
 
 # Page Configuration
 st.set_page_config(
@@ -47,7 +48,6 @@ uploaded_file = st.file_uploader(
 analyze = st.button("Analyze Influencers")
 
 
-
 if uploaded_file is not None:
 
     try:
@@ -70,7 +70,7 @@ if uploaded_file is not None:
 
         if missing_columns:
             st.error("Invalid CSV File")
-            st.write("Missing Columns:")
+            st.error("Missing Columns: " + ", ".join(missing_columns))
             st.write(missing_columns)
 
         else:
@@ -80,5 +80,36 @@ if uploaded_file is not None:
 
             st.dataframe(df, use_container_width=True)
 
+            if analyze:
+
+                scores = []
+                matched = []
+                status = []
+
+                for _, row in df.iterrows():
+
+                    score, keywords, result = classify_influencer(
+                        row["Bio"],
+                        row["Language"],
+                        language,
+                        orientation,
+                           niche
+                    )
+
+                    scores.append(score)
+                    matched.append(", ".join(keywords))
+                    status.append(result)
+
+                # Add new columns
+                df["Match Score"] = scores
+                df["Matched Keywords"] = matched
+                df["Status"] = status
+
+                st.subheader("Analyzed Data")
+
+                st.dataframe(df, use_container_width=True)
+
     except Exception as e:
         st.error(f"Error : {e}")
+
+        
